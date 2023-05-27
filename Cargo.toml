@@ -1,9 +1,9 @@
 [package]
-name = "pty2"
+name = "pty3"
 version = "0.1.0"
 edition = "2021"
 authors = ["Anillc <i@anillc.cn>"]
-repository = "https://github.com/Anillc/pty2"
+repository = "https://github.com/Anillc/pty3"
 description = "async pseudo-terminal"
 license = "MIT"
 include = [
