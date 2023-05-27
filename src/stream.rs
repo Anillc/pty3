@@ -1,14 +1,14 @@
-use std::{pin::Pin, task::{Context, Poll, ready}, io, os::fd::{AsRawFd, RawFd}, rc::Rc};
+use std::{pin::Pin, task::{Context, Poll, ready}, io, os::fd::{AsRawFd, RawFd}, sync::Arc};
 use tokio::io::{unix::AsyncFd, AsyncWrite, AsyncRead, ReadBuf};
 use crate::error::{Result, PtyError};
 
 #[derive(Debug)]
 pub struct Fd<T: AsRawFd> {
-  inner: Rc<AsyncFd<T>>
+  inner: Arc<AsyncFd<T>>
 }
 
 impl<T: AsRawFd> Fd<T> {
-    pub fn new(async_fd: Rc<AsyncFd<T>>) -> Result<Fd<T>> {
+    pub fn new(async_fd: Arc<AsyncFd<T>>) -> Result<Fd<T>> {
         let fd = async_fd.get_ref().as_raw_fd();
         Self::set_non_blocking(fd)?;
         Ok(Fd { inner: async_fd })
@@ -43,7 +43,10 @@ impl<T: AsRawFd> AsyncRead for Fd<T> {
         
             match result {
                 Err(_would_block) => continue,
-                Ok(Err(err)) => break Poll::Ready(Err(err)),
+                Ok(Err(_)) => {
+                    buf.advance(0);
+                    break Poll::Ready(Ok(()));
+                },
                 Ok(Ok(len)) => {
                     buf.advance(len as usize);
                     break Poll::Ready(Ok(()));
@@ -72,7 +75,6 @@ impl<T: AsRawFd> AsyncWrite for Fd<T> {
                 Err(_would_block) => continue,
                 Ok(result) => break Poll::Ready(result),
             }
-            
         }
     }
 
@@ -81,6 +83,11 @@ impl<T: AsRawFd> AsyncWrite for Fd<T> {
     }
 
     fn poll_shutdown(self: Pin<&mut Self>, _cx: &mut Context) -> Poll<io::Result<()>> {
+        let fd = self.inner.get_ref().as_raw_fd();
+        let ret = unsafe { libc::close(fd) };
+        if ret < 0 {
+            return Poll::Ready(Err(std::io::Error::last_os_error()));
+        }
         Poll::Ready(Ok(()))
     }
 }
