@@ -1,14 +1,14 @@
-use std::{pin::Pin, task::{Context, Poll, ready}, io, os::fd::{AsRawFd, RawFd}};
+use std::{pin::Pin, task::{Context, Poll, ready}, io, os::fd::{AsRawFd, RawFd}, rc::Rc};
 use tokio::io::{unix::AsyncFd, AsyncWrite, AsyncRead, ReadBuf};
 use crate::error::{Result, PtyError};
 
 #[derive(Debug)]
 pub struct Fd<T: AsRawFd> {
-  inner: Box<AsyncFd<T>>
+  inner: Rc<AsyncFd<T>>
 }
 
 impl<T: AsRawFd> Fd<T> {
-    pub fn new(async_fd: Box<AsyncFd<T>>) -> Result<Fd<T>> {
+    pub fn new(async_fd: Rc<AsyncFd<T>>) -> Result<Fd<T>> {
         let fd = async_fd.get_ref().as_raw_fd();
         Self::set_non_blocking(fd)?;
         Ok(Fd { inner: async_fd })
@@ -19,7 +19,7 @@ impl<T: AsRawFd> Fd<T> {
             libc::fcntl(fd, libc::F_SETFL, libc::fcntl(fd, libc::F_GETFL) | libc::O_NONBLOCK)
         };
         if ret < 0 {
-            return Err(PtyError::SyscallFailed)
+            return Err(PtyError::SyscallFailed(std::io::Error::last_os_error()))
         }
         Ok(())
     }
