@@ -2,6 +2,14 @@
 name = "pty2"
 version = "0.1.0"
 edition = "2021"
+authors = ["Anillc <i@anillc.cn>"]
+repository = "https://github.com/Anillc/pty2"
+description = "async pseudo-terminal"
+license = "MIT"
+include = [
+  "**/*.rs",
+  "Cargo.toml",
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
